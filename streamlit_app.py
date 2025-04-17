@@ -1,26 +1,48 @@
 import streamlit as st
-import requests
+import openai
 
-st.set_page_config(page_title="Classificador de Conteúdo", layout="centered")
+# Configurações do app
+st.set_page_config(page_title="Classificador de Atividades", layout="centered")
+st.title("📘 Classificador de Atividades em Planos de Aula")
 
-st.title("🔍 Classificador de Conteúdo por URL")
+# Pega a chave da OpenAI de forma segura
+openai.api_key = st.secrets["openai"]["api_key"]
 
-# Entrada do usuário
-url_input = st.text_input("Informe a URL que deseja classificar:")
+# Input do usuário
+url_input = st.text_input("Informe a URL do plano de aula:", placeholder="https://novaescola.org.br/planos-de-aula/...")
 
-if st.button("Classificar"):
-    if url_input:
-        try:
-            # Fazendo a chamada para a API (ajuste o endpoint conforme necessário)
-            api_url = "http://localhost:8000/classificar"  # Substitua pela URL da sua API
-            response = requests.post(api_url, json={"url": url_input})
-
-            if response.status_code == 200:
-                resultado = response.json().get("classificacao", "Nenhum resultado retornado.")
-                st.text_area("Resultado da Classificação:", resultado, height=200)
-            else:
-                st.error(f"Erro ao consultar a API: {response.status_code}")
-        except Exception as e:
-            st.error(f"Ocorreu um erro: {e}")
+if st.button("Classificar Atividades"):
+    if not url_input:
+        st.warning("Por favor, insira uma URL.")
     else:
-        st.warning("Por favor, insira uma URL antes de classificar.")
+        with st.spinner("Analisando o plano de aula..."):
+            prompt = f"""
+Você é um especialista em educação. Sua tarefa é analisar o plano de aula encontrado na URL abaixo, identificar as atividades pedagógicas propostas e classificá-las como **básico**, **intermediário** ou **avançado**, com base na complexidade e autonomia exigida dos estudantes.
+
+Critérios:
+- **Básico**: atividades de leitura, cópia, reconhecimento simples.
+- **Intermediário**: interpretação, organização de ideias, produção com apoio.
+- **Avançado**: produção autoral, resolução complexa, debates ou criação livre.
+
+Retorne a classificação diretamente como texto corrido, indicando claramente as atividades encontradas e seus respectivos níveis de dificuldade.
+
+URL: {url_input}
+"""
+
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Você é um classificador pedagógico especialista em planos de aula."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=1200
+                )
+
+                resultado = response["choices"][0]["message"]["content"].strip()
+                st.success("Classificação concluída:")
+                st.markdown(resultado)
+
+            except Exception as e:
+                st.error(f"Erro ao conectar com a API da OpenAI: {str(e)}")
