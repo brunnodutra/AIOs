@@ -5,8 +5,8 @@ import openai
 st.set_page_config(page_title="Classificador de Atividades", layout="centered")
 st.title("📘 Classificador de Atividades em Planos de Aula")
 
-# Pega a chave da OpenAI de forma segura
-openai.api_key = st.secrets["openai"]["api_key"]
+# Chave da API via st.secrets
+client = openai.OpenAI(api_key=st.secrets["openai"]["api_key"])
 
 # Input do usuário
 url_input = st.text_input("Informe a URL do plano de aula:", placeholder="https://novaescola.org.br/planos-de-aula/...")
@@ -30,7 +30,7 @@ URL: {url_input}
 """
 
             try:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": "Você é um classificador pedagógico especialista em planos de aula."},
@@ -40,7 +40,7 @@ URL: {url_input}
                     max_tokens=1200
                 )
 
-                resultado = response["choices"][0]["message"]["content"].strip()
+                resultado = response.choices[0].message.content.strip()
                 st.success("Classificação concluída:")
                 st.markdown(resultado)
 
